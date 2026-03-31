@@ -216,7 +216,7 @@ function dodaj() {
 }
 
 function generujCSV() {
-    let csv = "KOD;Lokalizacja;ILOSC\n";
+    let csv = "ILOSC;KOD;Lokalizacja\n";
     document.querySelectorAll("#tabela tbody tr").forEach(row => {
         const dane = Array.from(row.querySelectorAll("td")).slice(0,3).map(td => td.textContent);
         csv += dane.join(";") + "\n";
