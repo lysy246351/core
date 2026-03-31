@@ -8,10 +8,10 @@ app = Flask(__name__)
 # CORS(app, origins=["http://search.airstal.com/m/core/index.html"])
 DB_FILE = "baza.db"
 
-# API_KEY = os.getenv("API_KEY")
+API_KEY = os.getenv("API_KEY")
 
-# def sprawdz_auth(request):
-#     return request.headers.get("Authorization") == f"Bearer {API_KEY}"
+def sprawdz_auth(request):
+    return request.headers.get("Authorization") == f"Bearer {API_KEY}"
 
 def init_db():
     conn = sqlite3.connect(DB_FILE)
@@ -33,21 +33,33 @@ def index():
 
 @app.route("/dodaj", methods=["POST"])
 def dodaj():
-    # if not sprawdz_auth(request):
-    #     return jsonify({"error": "brak autoryzacji"}), 403
+    if not sprawdz_auth(request):
+        return jsonify({"error": "brak autoryzacji"}), 401
     data = request.json
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    c.execute("INSERT INTO dane (core, polka, ilosc) VALUES (?, ?, ?)",
-              (data["core"], data["polka"], data["ilosc"]))
+    
+    # Sprawdź czy rekord już istnieje
+    c.execute("SELECT id, ilosc FROM dane WHERE core = ? AND polka = ?", (data["core"], data["polka"]))
+    existing = c.fetchone()
+    
+    if existing:
+        # jeśli istnieje, aktualizujemy ilość
+        new_ilosc = existing[1] + int(data["ilosc"])
+        c.execute("UPDATE dane SET ilosc = ? WHERE id = ?", (new_ilosc, existing[0]))
+    else:
+        # jeśli nie istnieje, dodajemy nowy rekord
+        c.execute("INSERT INTO dane (core, polka, ilosc) VALUES (?, ?, ?)", 
+                  (data["core"], data["polka"], data["ilosc"]))
+    
     conn.commit()
     conn.close()
     return jsonify({"status": "ok"})
 
 @app.route("/dane", methods=["GET"])
 def pobierz_dane():
-    # if not sprawdz_auth(request):
-    #     return jsonify({"error": "brak autoryzacji"}), 403
+    if not sprawdz_auth(request):
+        return jsonify({"error": "brak autoryzacji"}), 401
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     c.execute("SELECT id, core, polka, ilosc FROM dane")
@@ -57,8 +69,8 @@ def pobierz_dane():
 
 @app.route("/wyczysc", methods=["POST"])
 def wyczysc():
-    # if not sprawdz_auth(request):
-    #     return jsonify({"error": "brak autoryzacji"}), 403
+    if not sprawdz_auth(request):
+        return jsonify({"error": "brak autoryzacji"}), 401
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     c.execute("DELETE FROM dane")
@@ -68,8 +80,8 @@ def wyczysc():
 
 @app.route("/edytuj", methods=["POST"])
 def edytuj():
-    # if not sprawdz_auth(request):
-    #     return jsonify({"error": "brak autoryzacji"}), 403
+    if not sprawdz_auth(request):
+        return jsonify({"error": "brak autoryzacji"}), 401
     data = request.json
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
@@ -84,8 +96,8 @@ def edytuj():
 
 @app.route("/usun", methods=["POST"])
 def usun():
-    # if not sprawdz_auth(request):
-    #     return jsonify({"error": "brak autoryzacji"}), 403
+    if not sprawdz_auth(request):
+        return jsonify({"error": "brak autoryzacji"}), 401
     data = request.json
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()

@@ -142,35 +142,58 @@
 </head>
 
 <body>
+<div id="authDiv">
+    <h3>Podaj token, aby kontynuować:</h3>
+    <input type="text" id="userToken" placeholder="Token">
+    <button onclick="sprawdzToken()">Zaloguj</button>
+    <p id="authError" style="color:red;"></p>
+</div>
 
-<h2>Przyjęcia Core</h2>
+<div id="appDiv" style="display:none;">
+    <h2>Przyjęcia Core</h2>
 
-<form id="form">
-    <input type="number" id="ilosc" value="1" min="1">
-    <input type="text" id="core" placeholder="Core" required>
-    <input type="text" id="polka" placeholder="Półka" required>
-    <button type="button" class="btn-dodaj" onclick="dodaj()">Dodaj</button>
-</form>
+    <form id="form">
+        <input type="number" id="ilosc" value="1" min="1">
+        <input type="text" id="core" placeholder="Core" required>
+        <input type="text" id="polka" placeholder="Półka" required>
+        <button type="button" class="btn-dodaj" onclick="dodaj()">Dodaj</button>
+    </form>
 
-<button class="btn-pobierz" onclick="generujCSV()">Pobierz CSV</button>
-<button class="btn-wyczysc" onclick="wyczysc()">Wyczyść wszystkie dane z tabeli</button>
+    <button class="btn-pobierz" onclick="generujCSV()">Pobierz CSV</button>
+    <button class="btn-wyczysc" onclick="wyczysc()">Wyczyść wszystkie dane z tabeli</button>
 
-<table id="tabela">
-    <thead>
-        <tr>
-            <th onclick="sortTable(0)">ID ▲▼</th>
-            <th onclick="sortTable(1)">Core ▲▼</th>
-            <th onclick="sortTable(2)">Półka ▲▼</th>
-            <th onclick="sortTable(3)">Ilość ▲▼</th>
-            <th>Akcje</th>
-        </tr>
-    </thead>
-    <tbody></tbody>
-</table>
+    <table id="tabela">
+        <thead>
+            <tr>
+                <th onclick="sortTable(0)">ID ▲▼</th>
+                <th onclick="sortTable(1)">Core ▲▼</th>
+                <th onclick="sortTable(2)">Półka ▲▼</th>
+                <th onclick="sortTable(3)">Ilość ▲▼</th>
+                <th>Akcje</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+
 
 <script>
 
 let edytowanie = false;
+let AUTH_TOKEN = null; // globalnie token użytkownika
+let ostatnieSortowanie = { kolumna: null, kierunek: true }; // true = rosnąco
+
+function sprawdzToken() {
+    const token = document.getElementById("userToken").value.trim();
+    if (!token) {
+        document.getElementById("authError").textContent = "Wpisz token!";
+        return;
+    }
+    AUTH_TOKEN = token;
+    document.getElementById("authDiv").style.display = "none";
+    document.getElementById("appDiv").style.display = "block";
+}
 
 // Obsługa Enter w formularzu
 const formInputs = [
@@ -205,7 +228,8 @@ function dodaj() {
     fetch("/dodaj", {
         method: "POST",
         headers: { 
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + AUTH_TOKEN // dodajemy token do nagłówka
         },
         body: JSON.stringify({ core, polka, ilosc })
     }).then(() => {
@@ -216,25 +240,44 @@ function dodaj() {
 }
 
 function generujCSV() {
-    let csv = "ILOSC;KOD;Lokalizacja\n";
+    let nazwaPliku = prompt("Podaj nazwę pliku (bez rozszerzenia):", "dane");
+    if (!nazwaPliku) return; // anulowane
+
+    let csv = "KOD;ILOSC;Lokalizacja\n"; // nagłówek
     document.querySelectorAll("#tabela tbody tr").forEach(row => {
-        const dane = Array.from(row.querySelectorAll("td")).slice(0,3).map(td => td.textContent);
-        csv += dane.join(";") + "\n";
+        const core = row.cells[1].textContent;   // Core
+        const polka = row.cells[2].textContent;  // Półka
+        const ilosc = row.cells[3].textContent;  // Ilość
+        csv += [core, ilosc, polka].join(";") + "\n";
     });
+
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "dane.csv";
+    a.download = nazwaPliku + ".csv";
     a.click();
     URL.revokeObjectURL(url);
 }
 
 function wyczysc() {
+    if (!AUTH_TOKEN) { alert("Najpierw podaj token!"); return; }
     if (!confirm("Czy na pewno chcesz usunąć wszystkie dane?")) return;
-    fetch("/wyczysc", { method: "POST" })
-        .then(res => res.json())
-        .then(() => wczytajDane());
+
+    fetch("/wyczysc", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${AUTH_TOKEN}`
+        }
+    })
+    .then(res => {
+        if(res.status === 401) {
+            alert("Nieprawidłowy token!");
+        } else {
+            wczytajDane();
+        }
+    });
 }
 
 // --- Sortowanie tabeli ---
@@ -242,20 +285,39 @@ function sortTable(col) {
     const table = document.getElementById("tabela");
     let rows = Array.from(table.tBodies[0].rows);
     const dir = sortDirections[col] ? 1 : -1;
+
     rows.sort((a,b) => {
         let valA = a.cells[col].textContent.toLowerCase();
         let valB = b.cells[col].textContent.toLowerCase();
         if (!isNaN(valA) && !isNaN(valB)) { valA = Number(valA); valB = Number(valB); }
         return valA > valB ? dir : (valA < valB ? -dir : 0);
     });
+
     rows.forEach(row => table.tBodies[0].appendChild(row));
     sortDirections[col] = !sortDirections[col];
+
+    // zapamiętujemy sortowanie
+    ostatnieSortowanie.kolumna = col;
+    ostatnieSortowanie.kierunek = sortDirections[col];
 }
 
 // --- Edycja rekordu ---
 function wczytajDane() {
-    fetch("/dane")
-    .then(res => res.json())
+    if (!AUTH_TOKEN) return; // jeśli nie podano tokenu, nie pobieramy danych
+
+    fetch("/dane", {
+        method: "GET",
+        headers: {
+            "Authorization": `Bearer ${AUTH_TOKEN}`
+        }
+    })
+    .then(res => {
+        if(res.status === 401) {
+            alert("Nieprawidłowy token!");
+            return;
+        }
+        return res.json();
+    })
     .then(data => {
         const tbody = document.querySelector("#tabela tbody");
         tbody.innerHTML = "";
@@ -270,15 +332,22 @@ function wczytajDane() {
             const btnEdytuj = document.createElement("button");
             btnEdytuj.textContent = "Edytuj";
             btnEdytuj.className = "btn-edytuj";
-            btnEdytuj.onclick = () => edytujRekord(row, item); // przekazujemy ID
+            btnEdytuj.onclick = () => edytujRekord(row, item);
             akcje.appendChild(btnEdytuj);
 
             const btnUsun = document.createElement("button");
             btnUsun.textContent = "Usuń";
             btnUsun.className = "btn-usun";
-            btnUsun.onclick = () => usunRekord(item[0]); // przekazujemy ID
+            btnUsun.onclick = () => usunRekord(item[0]);
             akcje.appendChild(btnUsun);
         });
+
+        // przywracamy ostatnie sortowanie
+        if (ostatnieSortowanie.kolumna !== null) {
+            sortTable(ostatnieSortowanie.kolumna);
+            // przywracamy kierunek
+            if (!ostatnieSortowanie.kierunek) sortTable(ostatnieSortowanie.kolumna);
+        }
     });
 }
 
@@ -311,7 +380,10 @@ function edytujRekord(row, item) {
 
         fetch("/edytuj", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { 
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + AUTH_TOKEN
+            },
             body: JSON.stringify({ id, core, polka, ilosc })  // <-- wysyłamy id
         }).then(() => {
             edytowanie = false;
@@ -336,7 +408,10 @@ function usunRekord(id) {
     if (!confirm("Czy na pewno chcesz usunąć ten rekord?")) return;
     fetch("/usun", { //https://core-9zkn.onrender.com
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + AUTH_TOKEN
+        },
         body: JSON.stringify({ id })
     }).then(() => wczytajDane());
 }
