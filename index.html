@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<title>Core / Półka</title>
+
+<style>
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: #f0f2f5;
+        margin: 0;
+        padding: 30px;
+        color: #333;
+    }
+
+    h2 {
+        font-size: 2rem;
+        margin-bottom: 20px;
+        color: #1f2937;
+    }
+
+    form {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+
+    input[type="text"], input[type="number"] {
+        flex: 1;
+        padding: 15px;
+        font-size: 1.2rem;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        outline: none;
+        transition: border 0.2s;
+    }
+
+    input[type="text"]:focus, input[type="number"]:focus {
+        border-color: #3b82f6;
+    }
+
+    button {
+        padding: 15px 25px;
+        font-size: 1.2rem;
+        font-weight: bold;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: background 0.2s, transform 0.1s;
+        margin: 5px 0;
+    }
+
+    button:hover { transform: scale(1.05); }
+
+    .btn-dodaj { background-color: #10b981; color: white; width: 150px; }
+    .btn-pobierz { background-color: #3b82f6; color: white; }
+    .btn-wyczysc { background-color: #ef4444; color: white; }
+
+    .btn-edytuj {
+        background-color: #f59e0b;
+        color: white;
+        padding: 10px 16px;
+        font-size: 1.1rem;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+        transition: transform 0.1s, background 0.2s;
+        width: 150px;
+    }
+    .btn-edytuj:hover {
+        background-color: #d97706;
+        transform: scale(1.05);
+    }
+
+    .btn-usun {
+        background-color: #ef4444;
+        color: white;
+        padding: 10px 16px;
+        font-size: 1.1rem;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+        transition: transform 0.1s, background 0.2s;
+        width: 150px;
+    }
+    .btn-usun:hover {
+        background-color: #b91c1c;
+        transform: scale(1.05);
+    }
+
+    table {
+        table-layout: fixed;
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        border-radius: 10px;
+        overflow: hidden;
+        font-size: 1.2rem; /* większa czcionka dla wszystkich rekordów */
+    }
+
+    th, td {
+        overflow: hidden;  /* ważne, żeby tekst nie wychodził poza komórki */
+    }
+    th:nth-child(2) { width: 27%; border-right: 1px solid black;}  /* Core */
+    th:nth-child(3) { width: 27%; border-right: 1px solid black;}  /* Półka */
+    th:nth-child(4) { width: 27%; border-right: 1px solid black;}  /* Ilość */
+    th:nth-child(5) { width: 19%; }  /* Akcje */
+
+    td:nth-child(2) { width: 27%; border-right: 1px solid gray;}  /* Core */
+    td:nth-child(3) { width: 27%; border-right: 1px solid gray;}  /* Półka */
+    td:nth-child(4) { width: 27%; border-right: 1px solid gray;}  /* Ilość */
+
+    th, td {
+        padding: 16px 12px;
+        text-align: center;
+    }
+
+    td {
+        font-size: 1.5rem;
+        font-weight: 600;
+    }
+
+    th {
+        background: #3b82f6;
+        color: white;
+        font-size: 1.5rem;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    tr:nth-child(even) { background: #f9fafb; }
+    tr:hover { background: #e0f2fe; }
+
+    @media (max-width: 600px) {
+        form { flex-direction: column; }
+        input, button { width: 100%; }
+        th, td { padding: 12px 8px; }
+    }
+</style>
+</head>
+
+<body>
+
+<h2>Przyjęcia Core</h2>
+
+<form id="form">
+    <input type="number" id="ilosc" value="1" min="1">
+    <input type="text" id="core" placeholder="Core" required>
+    <input type="text" id="polka" placeholder="Półka" required>
+    <button type="button" class="btn-dodaj" onclick="dodaj()">Dodaj</button>
+</form>
+
+<button class="btn-pobierz" onclick="generujCSV()">Pobierz CSV</button>
+<button class="btn-wyczysc" onclick="wyczysc()">Wyczyść wszystkie dane z tabeli</button>
+
+<table id="tabela">
+    <thead>
+        <tr>
+            <th onclick="sortTable(0)">ID ▲▼</th>
+            <th onclick="sortTable(1)">Core ▲▼</th>
+            <th onclick="sortTable(2)">Półka ▲▼</th>
+            <th onclick="sortTable(3)">Ilość ▲▼</th>
+            <th>Akcje</th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+
+<script>
+
+let edytowanie = false;
+
+// Obsługa Enter w formularzu
+const formInputs = [
+    document.getElementById("ilosc"),
+    document.getElementById("core"),
+    document.getElementById("polka")
+];
+
+formInputs.forEach((input, index) => {
+    input.addEventListener("keydown", function(e) {
+        if (e.key === "Enter") {
+            e.preventDefault(); // zapobiega domyślnemu submit
+            if (index < formInputs.length - 1) {
+                formInputs[index + 1].focus(); // przechodzimy do następnego pola
+            } else {
+                dodaj(); // ostatnie pole → dodaj
+                formInputs[1].focus(); // opcjonalnie wracamy do pierwszego pola
+            }
+        }
+    });
+});
+
+let sortDirections = [true, true, true]; // true = rosnąco, false = malejąco
+
+function dodaj() {
+    const core = document.getElementById("core").value.trim();
+    const polka = document.getElementById("polka").value.trim();
+    const ilosc = document.getElementById("ilosc").value;
+
+    if (!core || !polka) { alert("Uzupełnij pola!"); return; }
+
+    fetch("/dodaj", {
+        method: "POST",
+        headers: { 
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ core, polka, ilosc })
+    }).then(() => {
+        wczytajDane();
+        document.getElementById("core").value = "";
+        document.getElementById("polka").value = "";
+    });
+}
+
+function generujCSV() {
+    let csv = "KOD;Lokalizacja;ILOSC\n";
+    document.querySelectorAll("#tabela tbody tr").forEach(row => {
+        const dane = Array.from(row.querySelectorAll("td")).slice(0,3).map(td => td.textContent);
+        csv += dane.join(";") + "\n";
+    });
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "dane.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function wyczysc() {
+    if (!confirm("Czy na pewno chcesz usunąć wszystkie dane?")) return;
+    fetch("/wyczysc", { method: "POST" })
+        .then(res => res.json())
+        .then(() => wczytajDane());
+}
+
+// --- Sortowanie tabeli ---
+function sortTable(col) {
+    const table = document.getElementById("tabela");
+    let rows = Array.from(table.tBodies[0].rows);
+    const dir = sortDirections[col] ? 1 : -1;
+    rows.sort((a,b) => {
+        let valA = a.cells[col].textContent.toLowerCase();
+        let valB = b.cells[col].textContent.toLowerCase();
+        if (!isNaN(valA) && !isNaN(valB)) { valA = Number(valA); valB = Number(valB); }
+        return valA > valB ? dir : (valA < valB ? -dir : 0);
+    });
+    rows.forEach(row => table.tBodies[0].appendChild(row));
+    sortDirections[col] = !sortDirections[col];
+}
+
+// --- Edycja rekordu ---
+function wczytajDane() {
+    fetch("/dane")
+    .then(res => res.json())
+    .then(data => {
+        const tbody = document.querySelector("#tabela tbody");
+        tbody.innerHTML = "";
+        data.forEach(item => {
+            const row = tbody.insertRow();
+            row.insertCell(0).textContent = item[0]; // ID = L.p.
+            row.insertCell(1).textContent = item[1]; // Core
+            row.insertCell(2).textContent = item[2]; // Półka
+            row.insertCell(3).textContent = item[3]; // Ilość
+
+            const akcje = row.insertCell(4);
+            const btnEdytuj = document.createElement("button");
+            btnEdytuj.textContent = "Edytuj";
+            btnEdytuj.className = "btn-edytuj";
+            btnEdytuj.onclick = () => edytujRekord(row, item); // przekazujemy ID
+            akcje.appendChild(btnEdytuj);
+
+            const btnUsun = document.createElement("button");
+            btnUsun.textContent = "Usuń";
+            btnUsun.className = "btn-usun";
+            btnUsun.onclick = () => usunRekord(item[0]); // przekazujemy ID
+            akcje.appendChild(btnUsun);
+        });
+    });
+}
+
+// edycja po ID
+function edytujRekord(row, item) {
+    edytowanie = true; // blokujemy auto-odświeżanie
+    // Zamieniamy pierwsze 3 komórki na inputy
+    for (let i = 1; i <= 3; i++) { // pomijamy kolumnę ID (L.p.) w row.cells[0]
+        const val = row.cells[i].textContent;
+        if(i === 3) {
+            row.cells[i].innerHTML = `<input type="number" value="${val}" style="width:90%; font-size:1.5rem; padding:3px;">`;
+        }
+        else {
+            row.cells[i].innerHTML = `<input type="text" value="${val}" style="width:90%; font-size:1.5rem; padding:3px;">`;
+        }
+    }
+
+    const akcje = row.cells[4]; // kolumna przycisków
+    akcje.innerHTML = "";
+
+    // Przycisk Zapisz
+    const btnZapisz = document.createElement("button");
+    btnZapisz.textContent = "Zapisz";
+    btnZapisz.className = "btn-dodaj";
+    btnZapisz.onclick = () => {
+        const id = item[0];            // L.p. = id z bazy
+        const core = row.cells[1].firstChild.value;
+        const polka = row.cells[2].firstChild.value;
+        const ilosc = row.cells[3].firstChild.value;
+
+        fetch("/edytuj", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id, core, polka, ilosc })  // <-- wysyłamy id
+        }).then(() => {
+            edytowanie = false;
+            wczytajDane();
+        });
+    };
+    akcje.appendChild(btnZapisz);
+
+    // Przycisk Anuluj
+    const btnAnuluj = document.createElement("button");
+    btnAnuluj.textContent = "Anuluj";
+    btnAnuluj.className = "btn-wyczysc";
+    btnAnuluj.onclick = () => {
+        edytowanie = false; // odblokowujemy auto-odświeżanie
+        wczytajDane();      // przywracamy dane
+    };
+    akcje.appendChild(btnAnuluj);
+}
+
+// usuwanie po ID
+function usunRekord(id) {
+    if (!confirm("Czy na pewno chcesz usunąć ten rekord?")) return;
+    fetch("/usun", { //https://core-9zkn.onrender.com
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id })
+    }).then(() => wczytajDane());
+}
+
+window.onload = function() { wczytajDane(); setInterval(() => {
+    if (!edytowanie) wczytajDane();
+}, 3000); };
+</script>
+
+</body>
+</html>
