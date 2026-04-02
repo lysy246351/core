@@ -1,24 +1,27 @@
 import os
 
 from flask import Flask, request, jsonify, send_file
-import sqlite3
 from flask_cors import CORS
+import psycopg2
 
 app = Flask(__name__)
 # CORS(app, origins=["http://search.airstal.com/m/core/index.html"])
-DB_FILE = "baza.db"
+
 
 API_KEY = os.getenv("API_KEY")
 
 def sprawdz_auth(request):
     return request.headers.get("Authorization") == f"Bearer {API_KEY}"
 
+def get_conn():
+    return psycopg2.connect(os.getenv("DATABASE_URL"))
+
 def init_db():
-    conn = sqlite3.connect(DB_FILE)
+    conn = get_conn()
     c = conn.cursor()
     c.execute("""
-        CREATE TABLE IF NOT EXISTS dane (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+        CREATE TABLE IF NOT EXISTS core (
+            id SERIAL PRIMARY KEY,
             core TEXT,
             polka TEXT,
             ilosc INTEGER
@@ -36,7 +39,7 @@ def dodaj():
     if not sprawdz_auth(request):
         return jsonify({"error": "brak autoryzacji"}), 401
     data = request.json
-    conn = sqlite3.connect(DB_FILE)
+    conn = get_conn()
     c = conn.cursor()
     
     # Sprawdź czy rekord już istnieje
@@ -44,13 +47,16 @@ def dodaj():
     existing = c.fetchone()
     
     if existing:
-        # jeśli istnieje, aktualizujemy ilość
         new_ilosc = existing[1] + int(data["ilosc"])
-        c.execute("UPDATE dane SET ilosc = ? WHERE id = ?", (new_ilosc, existing[0]))
+        c.execute(
+            "UPDATE core SET ilosc = %s WHERE id = %s",
+            (new_ilosc, existing[0])
+        )
     else:
-        # jeśli nie istnieje, dodajemy nowy rekord
-        c.execute("INSERT INTO dane (core, polka, ilosc) VALUES (?, ?, ?)", 
-                  (data["core"], data["polka"], data["ilosc"]))
+        c.execute(
+            "INSERT INTO core (core, polka, ilosc) VALUES (%s, %s, %s)",
+            (data["core"], data["polka"], data["ilosc"])
+        )
     
     conn.commit()
     conn.close()
@@ -60,9 +66,9 @@ def dodaj():
 def pobierz_dane():
     if not sprawdz_auth(request):
         return jsonify({"error": "brak autoryzacji"}), 401
-    conn = sqlite3.connect(DB_FILE)
+    conn = get_conn()
     c = conn.cursor()
-    c.execute("SELECT id, core, polka, ilosc FROM dane")
+    c.execute("SELECT id, core, polka, ilosc FROM core")
     rows = c.fetchall()
     conn.close()
     return jsonify(rows)
@@ -71,9 +77,9 @@ def pobierz_dane():
 def wyczysc():
     if not sprawdz_auth(request):
         return jsonify({"error": "brak autoryzacji"}), 401
-    conn = sqlite3.connect(DB_FILE)
+    conn = get_conn()
     c = conn.cursor()
-    c.execute("DELETE FROM dane")
+    c.execute("DELETE FROM core")
     conn.commit()
     conn.close()
     return jsonify({"status": "wyczyszczono"})
@@ -83,12 +89,12 @@ def edytuj():
     if not sprawdz_auth(request):
         return jsonify({"error": "brak autoryzacji"}), 401
     data = request.json
-    conn = sqlite3.connect(DB_FILE)
+    conn = get_conn()
     c = conn.cursor()
     c.execute("""
-        UPDATE dane
-        SET core = ?, polka = ?, ilosc = ?
-        WHERE id = ?
+        UPDATE core
+        SET core = %s, polka = %s, ilosc = %s
+        WHERE id = %s
     """, (data["core"], data["polka"], data["ilosc"], data["id"]))
     conn.commit()
     conn.close()
@@ -99,9 +105,9 @@ def usun():
     if not sprawdz_auth(request):
         return jsonify({"error": "brak autoryzacji"}), 401
     data = request.json
-    conn = sqlite3.connect(DB_FILE)
+    conn = get_conn()
     c = conn.cursor()
-    c.execute("DELETE FROM dane WHERE id = ?", (data["id"],))
+    c.execute("DELETE FROM core WHERE id = %s", (data["id"],))
     conn.commit()
     conn.close()
     return jsonify({"status": "usunieto"})
