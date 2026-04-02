@@ -43,7 +43,10 @@ def dodaj():
     c = conn.cursor()
     
     # Sprawdź czy rekord już istnieje
-    c.execute("SELECT id, ilosc FROM core WHERE core = ? AND polka = ?", (data["core"], data["polka"]))
+    c.execute(
+        "SELECT id, ilosc FROM core WHERE core = %s AND polka = %s",
+        (data["core"], data["polka"])
+    )
     existing = c.fetchone()
     
     if existing:
