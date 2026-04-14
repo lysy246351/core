@@ -1,4 +1,4 @@
-walidacja danych ----- chyba git
+walidacja danych ----- git/bez powiadomienia
 archiwizacja -> odczyt po datach i kontrahentach
 dodawanie od góry listy ----- git
 podświetlanie aktywnego pola ----- git
