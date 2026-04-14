@@ -90,6 +90,19 @@
         background-color: #b91c1c;
         transform: scale(1.05);
     }
+    .btn-archiwizuj {
+        background-color: #6b7280;
+        color: white;
+        padding: 10px 16px;
+        font-size: 1.1rem;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+        transition: transform 0.1s, background 0.2s;
+        width: 190px;
+        margin-left: 6px;
+    }
+    .btn-archiwizuj:hover { background-color: #4b5563; transform: scale(1.03); }
 
     table {
         table-layout: fixed;
@@ -164,6 +177,7 @@
 
     <button class="btn-pobierz" onclick="generujCSV()">Pobierz CSV</button>
     <button class="btn-wyczysc" onclick="wyczysc()">Wyczyść wszystkie dane z tabeli</button>
+    <button class="btn-archiwizuj" onclick="archiwizuj()">Archiwizuj</button>
 
     <table id="tabela">
         <thead>
@@ -309,6 +323,35 @@ function wyczysc() {
             wczytajDane();
         }
     });
+}
+
+function archiwizuj() {
+    if (!AUTH_TOKEN) { showError('Najpierw podaj token!'); return; }
+    const kontrahent = prompt('Podaj nazwę kontrahenta dla archiwum:');
+    if (kontrahent === null) return; // anulowano
+    if (!kontrahent.trim()) { showError('Nazwa kontrahenta jest wymagana'); return; }
+    if (!confirm(`Archiwizować dane dla kontrahenta: ${kontrahent.trim()} ?`)) return;
+
+    clearError();
+    fetch('/archiwizuj', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${AUTH_TOKEN}`
+        },
+        body: JSON.stringify({ kontrahent: kontrahent.trim() })
+    })
+    .then(res => {
+        if (!res.ok) {
+            return res.json().then(j => { throw new Error(j.message || 'Błąd serwera'); }).catch(() => { throw new Error('Błąd serwera'); });
+        }
+        return res.json();
+    })
+    .then(json => {
+        alert(`Archiwizowano (${json.inserted || 0} rekordów) dla: ${kontrahent}`);
+        wczytajDane();
+    })
+    .catch(err => showError(err.message || 'Błąd sieci przy archiwizacji'));
 }
 
 // --- Sortowanie tabeli ---

@@ -42,6 +42,16 @@ def init_db():
             ilosc INTEGER
         )
     """)
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS archive (
+            id SERIAL PRIMARY KEY,
+            core TEXT,
+            polka TEXT,
+            ilosc INTEGER,
+            kontrahent TEXT,
+            data DATE
+        )
+    """)
     conn.commit()
     conn.close()
     
@@ -104,6 +114,28 @@ def wyczysc():
     conn.commit()
     conn.close()
     return jsonify({"status": "wyczyszczono"})
+
+
+@app.route("/archiwizuj", methods=["POST"])
+def archiwizuj():
+    if not sprawdz_auth(request):
+        return jsonify({"error": "brak autoryzacji"}), 401
+    data = request.json or {}
+    kontrahent = data.get("kontrahent")
+    if not kontrahent:
+        return jsonify({"error": "invalid_data", "message": "Podaj nazwę kontrahenta"}), 400
+
+    conn = get_conn()
+    c = conn.cursor()
+    # Kopiuj dane z core do archive, dodając kontrahenta i dzisiejszą datę
+    c.execute(
+        "INSERT INTO archive (core, polka, ilosc, kontrahent, data) SELECT core, polka, ilosc, %s, CURRENT_DATE FROM core",
+        (kontrahent,)
+    )
+    inserted = c.rowcount
+    conn.commit()
+    conn.close()
+    return jsonify({"status": "archiwizowano", "inserted": inserted})
 
 @app.route("/edytuj", methods=["POST"])
 def edytuj():
