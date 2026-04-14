@@ -16,6 +16,21 @@ def sprawdz_auth(request):
 def get_conn():
     return psycopg2.connect(os.getenv("DATABASE_URL"))
 
+
+def validate_data(data):
+    """Validate that `core` starts with C and `polka` starts with A."""
+    if not data:
+        return False, "Brak danych"
+    core = data.get("core")
+    polka = data.get("polka")
+    if not core or not polka:
+        return False, "Pola 'core' i 'polka' są wymagane"
+    if core[0].upper() != "C":
+        return False, "Pole 'core' musi zaczynać się od litery C"
+    if polka[0].upper() != "A":
+        return False, "Pole 'polka' musi zaczynać się od litery A"
+    return True, ""
+
 def init_db():
     conn = get_conn()
     c = conn.cursor()
@@ -39,6 +54,9 @@ def dodaj():
     if not sprawdz_auth(request):
         return jsonify({"error": "brak autoryzacji"}), 401
     data = request.json
+    valid, msg = validate_data(data)
+    if not valid:
+        return jsonify({"error": "invalid_data", "message": msg}), 400
     conn = get_conn()
     c = conn.cursor()
     
@@ -71,7 +89,7 @@ def pobierz_dane():
         return jsonify({"error": "brak autoryzacji"}), 401
     conn = get_conn()
     c = conn.cursor()
-    c.execute("SELECT id, core, polka, ilosc FROM core")
+    c.execute("SELECT id, core, polka, ilosc FROM core ORDER BY id DESC")
     rows = c.fetchall()
     conn.close()
     return jsonify(rows)
@@ -92,6 +110,9 @@ def edytuj():
     if not sprawdz_auth(request):
         return jsonify({"error": "brak autoryzacji"}), 401
     data = request.json
+    valid, msg = validate_data(data)
+    if not valid:
+        return jsonify({"error": "invalid_data", "message": msg}), 400
     conn = get_conn()
     c = conn.cursor()
     c.execute("""

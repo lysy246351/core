@@ -1,0 +1,10 @@
+walidacja danych ----- chyba git
+archiwizacja -> odczyt po datach i kontrahentach
+dodawanie od góry listy ----- git
+podświetlanie aktywnego pola ----- git
+
+
+
+
+
+URUCHOMIĆ LOKALNIE

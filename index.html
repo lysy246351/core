@@ -33,11 +33,13 @@
         border: 1px solid #ccc;
         border-radius: 8px;
         outline: none;
-        transition: border 0.2s;
+        transition: border-color 0.15s, box-shadow 0.15s;
     }
 
+    /* Wyraźny zielony border i delikatny glow przy focusie */
     input[type="text"]:focus, input[type="number"]:focus {
-        border-color: #3b82f6;
+        border: 2px solid #10b981; /* zielony */
+        box-shadow: 0 0 0 3px rgba(16,185,129,0.12);
     }
 
     button {
@@ -158,6 +160,7 @@
         <input type="text" id="polka" placeholder="Półka" required>
         <button type="button" class="btn-dodaj" onclick="dodaj()">Dodaj</button>
     </form>
+    <p id="formError" style="color:#ef4444; font-weight:700; margin-top:8px; display:none;"></p>
 
     <button class="btn-pobierz" onclick="generujCSV()">Pobierz CSV</button>
     <button class="btn-wyczysc" onclick="wyczysc()">Wyczyść wszystkie dane z tabeli</button>
@@ -183,6 +186,23 @@
 let edytowanie = false;
 let AUTH_TOKEN = null; // globalnie token użytkownika
 let ostatnieSortowanie = { kolumna: null, kierunek: true }; // true = rosnąco
+
+function showError(msg) {
+    const el = document.getElementById('formError');
+    el.textContent = msg || 'Wystąpił błąd';
+    el.style.display = 'block';
+    // automatycznie ukryj po 6s
+    clearTimeout(el._hideTimer);
+    el._hideTimer = setTimeout(() => { el.style.display = 'none'; }, 6000);
+}
+
+function clearError() {
+    const el = document.getElementById('formError');
+    if (!el) return;
+    el.style.display = 'none';
+    el.textContent = '';
+    clearTimeout(el._hideTimer);
+}
 
 function sprawdzToken() {
     const token = document.getElementById("userToken").value.trim();
@@ -225,6 +245,8 @@ function dodaj() {
 
     if (!core || !polka) { alert("Uzupełnij pola!"); return; }
 
+    clearError();
+
     fetch("/dodaj", {
         method: "POST",
         headers: { 
@@ -232,11 +254,20 @@ function dodaj() {
             "Authorization": "Bearer " + AUTH_TOKEN // dodajemy token do nagłówka
         },
         body: JSON.stringify({ core, polka, ilosc })
-    }).then(() => {
+    })
+    .then(res => {
+        if (!res.ok) {
+            return res.json().then(j => { throw new Error(j.message || 'Błąd serwera'); }).catch(() => { throw new Error('Błąd serwera'); });
+        }
+        return res.json().catch(() => ({}));
+    })
+    .then(() => {
+        clearError();
         wczytajDane();
         document.getElementById("core").value = "";
         document.getElementById("polka").value = "";
-    });
+    })
+    .catch(err => showError(err.message || 'Błąd sieci'));
 }
 
 function generujCSV() {
@@ -385,9 +416,20 @@ function edytujRekord(row, item) {
                 "Authorization": "Bearer " + AUTH_TOKEN
             },
             body: JSON.stringify({ id, core, polka, ilosc })  // <-- wysyłamy id
-        }).then(() => {
+        })
+        .then(res => {
+            if (!res.ok) {
+                return res.json().then(j => { throw new Error(j.message || 'Błąd serwera'); }).catch(() => { throw new Error('Błąd serwera'); });
+            }
+            return res.json().catch(() => ({}));
+        })
+        .then(() => {
             edytowanie = false;
+            clearError();
             wczytajDane();
+        })
+        .catch(err => {
+            showError(err.message || 'Błąd sieci');
         });
     };
     akcje.appendChild(btnZapisz);
