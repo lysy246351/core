@@ -165,7 +165,8 @@
     <p id="formError" style="color:#ef4444; font-weight:700; margin-top:8px; display:none;"></p>
 
     <button class="btn-pobierz" onclick="generujCSV()">Pobierz CSV</button>
-    <button class="btn-wyczysc" onclick="wyczysc()">Wyczyść wszystkie dane z tabeli</button>
+    <!-- <button class="btn-wyczysc" onclick="wyczysc()">Wyczyść wszystkie dane z tabeli</button> -->
+    <button class="btn-pobierz" onclick="openArchiwum()">Archiwum</button>
     <button class="btn-archiwizuj" onclick="archiwizuj()">Archiwizuj</button>
 
     <table id="tabela">
@@ -214,6 +215,7 @@ function sprawdzToken() {
         return;
     }
     AUTH_TOKEN = token;
+    try { localStorage.setItem('AUTH_TOKEN', token); } catch(e) {}
     document.getElementById("authDiv").style.display = "none";
     document.getElementById("appDiv").style.display = "block";
 }
@@ -338,9 +340,16 @@ function archiwizuj() {
     })
     .then(json => {
         alert(`Archiwizowano (${json.inserted || 0} rekordów) dla: ${kontrahent}`);
+        wyczysc();
         wczytajDane();
     })
     .catch(err => showError(err.message || 'Błąd sieci przy archiwizacji'));
+}
+
+function openArchiwum() {
+    if (!AUTH_TOKEN) { alert('Najpierw podaj token!'); return; }
+    try { localStorage.setItem('AUTH_TOKEN', AUTH_TOKEN); } catch(e) {}
+    window.location.href = '/archiwum';
 }
 
 // --- Sortowanie tabeli ---

@@ -21,7 +21,6 @@
     <h2>Archiwum</h2>
 
     <div class="controls">
-        <input type="text" id="userToken" placeholder="Token" style="min-width:220px">
         <input type="date" id="archData">
         <button class="btn-primary" id="pobierzBtn">Pobierz</button>
         <button class="btn-csv" id="pobierzCSV">Pobierz CSV</button>
@@ -33,7 +32,6 @@
     <table id="tabela">
         <thead>
             <tr>
-                <th>ID</th>
                 <th>Core</th>
                 <th>Półka</th>
                 <th>Ilość</th>
@@ -53,9 +51,9 @@ function showError(msg){
 
 function pobierz() {
     showError('');
-    const token = document.getElementById('userToken').value.trim();
     const data = document.getElementById('archData').value;
-    if (!token) { showError('Wpisz token'); return; }
+    const token = localStorage.getItem('AUTH_TOKEN');
+    if (!token) { showError('Brak tokenu. Zaloguj się na stronie głównej.'); return; }
     if (!data) { showError('Wybierz datę'); return; }
 
     fetch(`/archiwum/dane?data=${encodeURIComponent(data)}`, {
@@ -75,23 +73,23 @@ function pobierz() {
 function renderRows(rows){
     const tbody = document.querySelector('#tabela tbody');
     tbody.innerHTML = '';
-    if (!rows || !rows.length) { tbody.innerHTML = '<tr><td colspan="6">Brak rekordów dla wybranej daty</td></tr>'; return; }
+    if (!rows || !rows.length) { tbody.innerHTML = '<tr><td colspan="5">Brak rekordów dla wybranej daty</td></tr>'; return; }
     rows.forEach(r => {
         const tr = document.createElement('tr');
-        tr.insertCell(0).textContent = r[0];
-        tr.insertCell(1).textContent = r[1];
-        tr.insertCell(2).textContent = r[2];
-        tr.insertCell(3).textContent = r[3];
-        tr.insertCell(4).textContent = r[4] || '';
-        tr.insertCell(5).textContent = r[5] ? (new Date(r[5]).toLocaleDateString()) : '';
+        // r: [id, core, polka, ilosc, kontrahent, data]
+        tr.insertCell(0).textContent = r[1] || '';
+        tr.insertCell(1).textContent = r[2] || '';
+        tr.insertCell(2).textContent = r[3] || '';
+        tr.insertCell(3).textContent = r[4] || '';
+        tr.insertCell(4).textContent = r[5] ? (new Date(r[5]).toLocaleDateString()) : '';
         tbody.appendChild(tr);
     });
 }
 
 function pobierzCSV(){
-    const token = document.getElementById('userToken').value.trim();
     const data = document.getElementById('archData').value;
-    if (!token) { showError('Wpisz token'); return; }
+    const token = localStorage.getItem('AUTH_TOKEN');
+    if (!token) { showError('Brak tokenu. Zaloguj się na stronie głównej.'); return; }
     if (!data) { showError('Wybierz datę'); return; }
 
     fetch(`/archiwum/dane?data=${encodeURIComponent(data)}`, {
@@ -102,10 +100,10 @@ function pobierzCSV(){
         return res.json();
     })
     .then(rows => {
-        let csv = 'ID;CORE;ILOSC;POLKA;KONTRAHENT;DATA\n';
+        let csv = 'CORE;POLKA;ILOSC;KONTRAHENT;DATA\n';
         rows.forEach(r => {
             const date = r[5] || '';
-            csv += [r[0], r[1], r[3], r[2], (r[4]||''), date].join(';') + '\n';
+            csv += [r[1]||'', r[2]||'', r[3]||'', (r[4]||''), date].join(';') + '\n';
         });
         const blob = new Blob([csv], {type:'text/csv'});
         const url = URL.createObjectURL(blob);
