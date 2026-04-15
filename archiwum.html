@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<title>Archiwum</title>
+<style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:#f0f2f5; padding:24px; }
+    h2 { color:#1f2937 }
+    .controls { display:flex; gap:8px; align-items:center; margin-bottom:12px; flex-wrap:wrap }
+    input[type="date"], input[type="text"] { padding:8px 10px; font-size:1rem; border-radius:6px; border:1px solid #ccc }
+    button { padding:10px 14px; border-radius:8px; border:none; cursor:pointer }
+    .btn-primary { background:#3b82f6; color:#fff }
+    .btn-csv { background:#10b981; color:#fff }
+    table { width:100%; border-collapse:collapse; margin-top:12px; background:#fff }
+    th, td { padding:10px; text-align:center; border-bottom:1px solid #eee }
+    th { background:#e6eefc }
+    .link-back { margin-top:10px; display:inline-block }
+</style>
+</head>
+<body>
+    <h2>Archiwum</h2>
+
+    <div class="controls">
+        <input type="text" id="userToken" placeholder="Token" style="min-width:220px">
+        <input type="date" id="archData">
+        <button class="btn-primary" id="pobierzBtn">Pobierz</button>
+        <button class="btn-csv" id="pobierzCSV">Pobierz CSV</button>
+        <button id="clearBtn">Wyczyść</button>
+    </div>
+
+    <div id="error" style="color:#b91c1c; font-weight:700; display:none"></div>
+
+    <table id="tabela">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Core</th>
+                <th>Półka</th>
+                <th>Ilość</th>
+                <th>Kontrahent</th>
+                <th>Data</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <a class="link-back" href="/">Powrót</a>
+
+<script>
+function showError(msg){
+    const el = document.getElementById('error'); el.textContent = msg; el.style.display = msg ? 'block' : 'none';
+}
+
+function pobierz() {
+    showError('');
+    const token = document.getElementById('userToken').value.trim();
+    const data = document.getElementById('archData').value;
+    if (!token) { showError('Wpisz token'); return; }
+    if (!data) { showError('Wybierz datę'); return; }
+
+    fetch(`/archiwum/dane?data=${encodeURIComponent(data)}`, {
+        headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(res => {
+        if (!res.ok) {
+            if (res.status === 401) throw new Error('Brak autoryzacji / nieprawidłowy token');
+            return res.json().then(j=>{ throw new Error(j.message || 'Błąd serwera') }).catch(()=>{ throw new Error('Błąd serwera') });
+        }
+        return res.json();
+    })
+    .then(rows => renderRows(rows))
+    .catch(err => showError(err.message || 'Błąd sieci'));
+}
+
+function renderRows(rows){
+    const tbody = document.querySelector('#tabela tbody');
+    tbody.innerHTML = '';
+    if (!rows || !rows.length) { tbody.innerHTML = '<tr><td colspan="6">Brak rekordów dla wybranej daty</td></tr>'; return; }
+    rows.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.insertCell(0).textContent = r[0];
+        tr.insertCell(1).textContent = r[1];
+        tr.insertCell(2).textContent = r[2];
+        tr.insertCell(3).textContent = r[3];
+        tr.insertCell(4).textContent = r[4] || '';
+        tr.insertCell(5).textContent = r[5] ? (new Date(r[5]).toLocaleDateString()) : '';
+        tbody.appendChild(tr);
+    });
+}
+
+function pobierzCSV(){
+    const token = document.getElementById('userToken').value.trim();
+    const data = document.getElementById('archData').value;
+    if (!token) { showError('Wpisz token'); return; }
+    if (!data) { showError('Wybierz datę'); return; }
+
+    fetch(`/archiwum/dane?data=${encodeURIComponent(data)}`, {
+        headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(res => {
+        if (!res.ok) throw new Error('Błąd pobierania CSV');
+        return res.json();
+    })
+    .then(rows => {
+        let csv = 'ID;CORE;ILOSC;POLKA;KONTRAHENT;DATA\n';
+        rows.forEach(r => {
+            const date = r[5] || '';
+            csv += [r[0], r[1], r[3], r[2], (r[4]||''), date].join(';') + '\n';
+        });
+        const blob = new Blob([csv], {type:'text/csv'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = `archiwum_${data}.csv`; a.click(); URL.revokeObjectURL(url);
+    })
+    .catch(err => showError(err.message || 'Błąd sieci'));
+}
+
+function clearTable(){ document.querySelector('#tabela tbody').innerHTML = ''; showError(''); }
+
+document.getElementById('pobierzBtn').addEventListener('click', pobierz);
+document.getElementById('pobierzCSV').addEventListener('click', pobierzCSV);
+document.getElementById('clearBtn').addEventListener('click', clearTable);
+</script>
+</body>
+</html>

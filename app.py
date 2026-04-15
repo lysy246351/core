@@ -59,6 +59,12 @@ def init_db():
 def index():
     return send_file("index.html")
 
+
+@app.route("/archiwum")
+def archiwum_page():
+    # Serve the archive HTML page from the repo root
+    return send_file("archiwum.html")
+
 @app.route("/dodaj", methods=["POST"])
 def dodaj():
     if not sprawdz_auth(request):
@@ -136,6 +142,27 @@ def archiwizuj():
     conn.commit()
     conn.close()
     return jsonify({"status": "archiwizowano", "inserted": inserted})
+
+
+@app.route('/archiwum/dane', methods=["GET"])
+def pobierz_archiwum():
+    """Zwraca rekordy z tabeli `archive` dla podanej daty (parametr query `data` w formacie RRRR-MM-DD)."""
+    if not sprawdz_auth(request):
+        return jsonify({"error": "brak autoryzacji"}), 401
+    date_str = request.args.get('data')
+    if not date_str:
+        return jsonify({"error": "invalid_data", "message": "Podaj parametr 'data' w formacie RRRR-MM-DD"}), 400
+
+    conn = get_conn()
+    c = conn.cursor()
+    # Pobierz wszystkie rekordy z konkretnej daty
+    c.execute(
+        "SELECT id, core, polka, ilosc, kontrahent, data FROM archive WHERE data = %s ORDER BY id DESC",
+        (date_str,)
+    )
+    rows = c.fetchall()
+    conn.close()
+    return jsonify(rows)
 
 @app.route("/edytuj", methods=["POST"])
 def edytuj():
