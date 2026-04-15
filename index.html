@@ -168,6 +168,7 @@
     <p id="formError" style="color:#ef4444; font-weight:700; margin-top:8px; display:none;"></p>
 
     <button class="btn-pobierz" onclick="generujCSV()">Pobierz CSV</button>
+    <button class="btn-pobierz" onclick="generujXLSX()">Pobierz XLSX</button>
     <!-- <button class="btn-wyczysc" onclick="wyczysc()">Wyczyść wszystkie dane z tabeli</button> -->
     <button class="btn-pobierz" onclick="openArchiwum()">Archiwum</button>
     <button class="btn-archiwizuj" onclick="archiwizuj()">Archiwizuj</button>
@@ -188,6 +189,7 @@
 
 
 
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 <script>
 
 let edytowanie = false;
@@ -297,6 +299,26 @@ function generujCSV() {
     a.download = nazwaPliku + ".csv";
     a.click();
     URL.revokeObjectURL(url);
+}
+
+function generujXLSX() {
+    let nazwaPliku = prompt("Podaj nazwę pliku (bez rozszerzenia):", "dane");
+    if (!nazwaPliku) return; // anulowane
+
+    // przygotowujemy dane: nagłówki zgodnie z prośbą
+    const ws_data = [];
+    ws_data.push(["KOD","ILOŚĆ","Jm.","CENA"]);
+
+    document.querySelectorAll("#tabela tbody tr").forEach(row => {
+        const core = row.cells[1].textContent.trim();   // Core -> KOD
+        const ilosc = row.cells[3].textContent.trim();  // Ilość
+        ws_data.push([core, ilosc, "", ""]); // Jm. i CENA puste
+    });
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(ws_data);
+    XLSX.utils.book_append_sheet(wb, ws, "Arkusz1");
+    XLSX.writeFile(wb, nazwaPliku + ".xlsx");
 }
 
 function wyczysc() {
