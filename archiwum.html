@@ -4,17 +4,21 @@
 <meta charset="UTF-8">
 <title>Archiwum</title>
 <style>
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:#f0f2f5; padding:24px; }
-    h2 { color:#1f2937 }
-    .controls { display:flex; gap:8px; align-items:center; margin-bottom:12px; flex-wrap:wrap }
-    input[type="date"], input[type="text"] { padding:8px 10px; font-size:1rem; border-radius:6px; border:1px solid #ccc }
-    button { padding:10px 14px; border-radius:8px; border:none; cursor:pointer }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:#f0f2f5; padding:30px; color:#333; }
+    h2 { color:#1f2937; font-size:2rem; margin-bottom:12px; }
+    .controls { display:flex; gap:12px; align-items:center; margin-bottom:18px; flex-wrap:wrap }
+    input[type="date"] { padding:14px 12px; font-size:1.25rem; border-radius:8px; border:1px solid #ccc; outline:none }
+    input[type="date"]:focus { border:2px solid #10b981; box-shadow:0 0 0 3px rgba(16,185,129,0.12); }
+    button { padding:14px 18px; border-radius:10px; border:none; cursor:pointer; font-size:1.15rem; font-weight:700 }
     .btn-primary { background:#3b82f6; color:#fff }
     .btn-csv { background:#10b981; color:#fff }
-    table { width:100%; border-collapse:collapse; margin-top:12px; background:#fff }
-    th, td { padding:10px; text-align:center; border-bottom:1px solid #eee }
-    th { background:#e6eefc }
-    .link-back { margin-top:10px; display:inline-block }
+    .btn-wyczysc { background:#ef4444; color:#fff }
+    table { width:100%; border-collapse:collapse; margin-top:16px; background:#fff; box-shadow:0 4px 12px rgba(0,0,0,0.06); border-radius:8px; overflow:hidden }
+    th, td { padding:16px 12px; text-align:center; border-bottom:1px solid #eee; }
+    th { background:#3b82f6; color:white; font-size:1.25rem }
+    td { font-size:1.2rem }
+    .link-back { margin-top:14px; display:inline-block; font-size:1rem }
+    @media (max-width:600px) { .controls { flex-direction:column; } input[type="date"], button { width:100%; } th, td { padding:12px 8px } }
 </style>
 </head>
 <body>
@@ -42,7 +46,9 @@
         <tbody></tbody>
     </table>
 
-    <a class="link-back" href="/">Powrót</a>
+    <div style="margin-top:14px;">
+        <button class="btn-primary link-back" id="backBtn">Powrót</button>
+    </div>
 
 <script>
 function showError(msg){
@@ -117,6 +123,7 @@ function clearTable(){ document.querySelector('#tabela tbody').innerHTML = ''; s
 document.getElementById('pobierzBtn').addEventListener('click', pobierz);
 document.getElementById('pobierzCSV').addEventListener('click', pobierzCSV);
 document.getElementById('clearBtn').addEventListener('click', clearTable);
+document.getElementById('backBtn').addEventListener('click', () => { window.location.href = '/'; });
 </script>
 </body>
 </html>

@@ -146,6 +146,9 @@
 </head>
 
 <body>
+<div style="display:flex; justify-content:flex-end; gap:12px; padding:12px 30px 0 30px;">
+    <button class="btn-pobierz" onclick="openArchiwumTop()">Archiwum</button>
+</div>
 <div id="authDiv">
     <h3>Podaj token, aby kontynuować:</h3>
     <input type="text" id="userToken" placeholder="Token">
@@ -349,6 +352,15 @@ function archiwizuj() {
 function openArchiwum() {
     if (!AUTH_TOKEN) { alert('Najpierw podaj token!'); return; }
     try { localStorage.setItem('AUTH_TOKEN', AUTH_TOKEN); } catch(e) {}
+    window.location.href = '/archiwum';
+}
+
+// Variant used by top-page button: read token from localStorage if needed
+function openArchiwumTop() {
+    let token = AUTH_TOKEN;
+    if (!token) token = localStorage.getItem('AUTH_TOKEN');
+    if (!token) { alert('Najpierw podaj token!'); return; }
+    try { localStorage.setItem('AUTH_TOKEN', token); } catch(e) {}
     window.location.href = '/archiwum';
 }
 
