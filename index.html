@@ -307,12 +307,13 @@ function generujXLSX() {
 
     // przygotowujemy dane: nagłówki zgodnie z prośbą
     const ws_data = [];
-    ws_data.push(["KOD","ILOŚĆ","Jm.","CENA"]);
+    ws_data.push(["KOD","ILOŚĆ","Jm.","CENA","Lokalizacja","Magazyn"]);
 
     document.querySelectorAll("#tabela tbody tr").forEach(row => {
         const core = row.cells[1].textContent.trim();   // Core -> KOD
+        const polka = row.cells[2].textContent.trim();  // Półka -> Lokalizacja
         const ilosc = row.cells[3].textContent.trim();  // Ilość
-        ws_data.push([core, ilosc, "", ""]); // Jm. i CENA puste
+    ws_data.push([core, ilosc, "", "", polka, "CORE_KOL"]); // Jm. i CENA puste
     });
 
     const wb = XLSX.utils.book_new();
